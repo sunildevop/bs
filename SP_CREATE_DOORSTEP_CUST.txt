@@ -1,0 +1,477 @@
+CREATE OR REPLACE PROCEDURE SP_CREATE_DOORSTEP_CUST(P_LEAD_NO      IN VARCHAR2,
+                                                    P_MOBILE_NO    IN NUMBER,
+                                                    P_BRANCH       IN NUMBER,
+                                                    P_CUST_NAME    IN VARCHAR2,
+                                                    P_GENDER       IN VARCHAR2,
+                                                    P_DOB          IN VARCHAR2,
+                                                    P_CHOUSE_NAME  IN VARCHAR2,
+                                                    P_CSTREET_NAME IN VARCHAR2,
+                                                    P_CLANDMARK    IN VARCHAR2,
+                                                    P_CPINCODE     IN VARCHAR2,
+                                                    P_FATHER_NAME  IN VARCHAR2,
+                                                    P_MOTHER_NAME  IN VARCHAR2,
+                                                    P_UCID_NO      IN VARCHAR2,
+                                                    P_USER_ID      IN VARCHAR2,
+                                                    P_CUST_ID      OUT NUMBER,
+                                                    P_ERR_MSG      OUT VARCHAR2,
+                                                    P_STATUS       OUT VARCHAR2) IS
+
+  W_ERR_MSG       VARCHAR2(1000);
+  W_STATE_CODE    VARCHAR2(20);
+  W_DISTRICT      VARCHAR2(20);
+  W_INV_NUM       NUMBER(10);
+  W_CUST_NUM      NUMBER(12);
+  W_CBD           DATE;
+  W_USR_EXCEPTION EXCEPTION;
+  W_PREFIX        CHAR(1);
+  W_DOCSL         NUMBER(3);
+  W_SQL           VARCHAR2(1000);
+  W_FOUND         NUMBER(3);
+
+BEGIN
+  P_STATUS := 'F';
+  sp_test_test('S', '1: ' || P_LEAD_NO);
+  sp_test_test('S', '2: ' || P_MOBILE_NO);
+  sp_test_test('S', '3: ' || P_BRANCH);
+  sp_test_test('S', '4: ' || P_CUST_NAME);
+  sp_test_test('S', '5: ' || P_GENDER);
+  sp_test_test('S', '6: ' || P_DOB);
+  sp_test_test('S', '7: ' || P_CHOUSE_NAME);
+  sp_test_test('S', '8: ' || P_CSTREET_NAME);
+  sp_test_test('S', '9: ' || P_CLANDMARK);
+  sp_test_test('S', '10: ' || P_CPINCODE);
+  sp_test_test('S', '11: ' || P_FATHER_NAME);
+  sp_test_test('S', '12: ' || P_MOTHER_NAME);
+  sp_test_test('S', '13: ' || P_UCID_NO);
+  sp_test_test('S', '14: ' || P_USER_ID);
+
+  W_CBD := PKG_PB_GLOBAL.FN_GET_CURR_BUS_DATE(1);
+
+  FOR IDY IN (SELECT LOCN_STATE_CODE, LOCN_DISTRICT_CODE
+                FROM LOCATION
+               WHERE LOCN_GEO_REGION_CODE = P_CPINCODE
+                 AND ROWNUM = 1) LOOP
+    W_STATE_CODE := IDY.LOCN_STATE_CODE;
+    W_DISTRICT   := IDY.LOCN_DISTRICT_CODE;
+  END LOOP;
+
+  PKG_GEN_INVNUM.SP_GEN_INVNUM(1, 'I', W_INV_NUM, W_ERR_MSG);
+
+  IF (TRIM(W_ERR_MSG) IS NOT NULL) THEN
+    RAISE W_USR_EXCEPTION;
+  END IF;
+
+  PKG_CUSTOMER_NUMGEN.SP_CUSTOMER_NUMGEN(1,
+                                         P_BRANCH,
+                                         1,
+                                         W_CUST_NUM,
+                                         W_ERR_MSG);
+  IF TRIM(W_ERR_MSG) IS NOT NULL THEN
+    RAISE W_USR_EXCEPTION;
+  END IF;
+
+  INSERT INTO CIFDATA
+    (CIFDATA_ENTITY_NUM,
+     CIFDATA_CUST_ID,
+     CIFDATA_HOME_BRN_CODE,
+     CIFDATA_CUST_NAME,
+     CIFDATA_CUST_CATEG,
+     CIFDATA_CHOUSE_NAME,
+     CIFDATA_CSTREET_NAME,
+     CIFDATA_CLANDMARK,
+     CIFDATA_CPLACE_NAME,
+     CIFDATA_CCITY,
+     CIFDATA_CSTATE,
+     CIFDATA_CDISTRICT,
+     CIFDATA_CPINCODE,
+     CIFDATA_EMAIL_ID,
+     CIFDATA_MOBILE_NUM,
+     CIFDATA_PID_INV_NUM,
+     CIFDATA_CREATION_STATUS,
+     CIFDATA_TYPE_FLG,
+     CIFDATA_ENTD_BY,
+     CIFDATA_ENTD_ON,
+     CIFDATA_LAST_MOD_BY,
+     CIFDATA_LAST_MOD_ON,
+     CIFDATA_AUTH_BY,
+     CIFDATA_AUTH_ON,
+     TBA_MAIN_KEY,
+     CIFDATA_CLANDLINE,
+     CIFDATA_CUST_TYPE,
+     CIFDATA_MEMP_NUM,
+     CIFDATA_AGENCY_CODE,
+     CIFDATA_MOBILE_NUM_2)
+  VALUES
+    (1,
+     W_CUST_NUM,
+     P_BRANCH,
+     P_CUST_NAME,
+     1,
+     P_CHOUSE_NAME,
+     P_CSTREET_NAME,
+     P_CLANDMARK,
+     '',
+     '',
+     W_STATE_CODE,
+     W_DISTRICT,
+     P_CPINCODE,
+     '',
+     P_MOBILE_NO,
+     W_INV_NUM,
+     'F',
+     'I',
+     P_USER_ID,
+     W_CBD,
+     '',
+     '',
+     P_USER_ID,
+     W_CBD,
+     '', --tba_main_key
+     '',
+     'I',
+     '',
+     '',
+     '');
+
+  IF P_GENDER LIKE 'MALE' THEN
+    W_PREFIX := '1';
+  ELSIF P_GENDER LIKE 'FEMALE' THEN
+    W_PREFIX := '2';
+  END IF;
+
+  INSERT INTO INDCIFDATA
+    (INDCIF_ENTITY_NUM,
+     INDCIF_CUST_ID,
+     INDCIF_PREFIX_CODE,
+     INDCIF_FIRST_NAME,
+     INDCIF_MIDLE_NAME,
+     INDCIF_LAST_NAME,
+     INDCIF_FATHER_NAME,
+     INDCIF_MOTHER_NAME,
+     INDCIF_DOB,
+     INDCIF_AGE,
+     INDCIF_GENDER,
+     INDCIF_MARITAL_STATUS,
+     INDCIF_RESIDENT_STATUS,
+     INDCIF_OCCUP_TYPE,
+     INDCIF_OCCUP_SERVICE,
+     INDCIF_OCCUP_OTHERS,
+     INDCIF_PERMANENT_ADDR_SAME,
+     INDCIF_PHOUSE_NAME,
+     INDCIF_PSTREET_NAME,
+     INDCIF_PLANDMARK,
+     INDCIF_PPLACE_NAME,
+     INDCIF_PCITY,
+     INDCIF_PSTATE,
+     INDCIF_PDISTRICT,
+     INDCIF_PPINCODE,
+     INDCIF_BUSINESS_NAME,
+     INDCIF_BULIDING_NAME,
+     INDCIF_BSTREET_NAME,
+     INDCIF_BLANDMARK,
+     INDCIF_BPLACE_NAME,
+     INDCIF_BCITY,
+     INDCIF_BSTATE,
+     INDCIF_BDISTRICT,
+     INDCIF_BPINCODE,
+     INDCIF_BLANDLINE,
+     INDCIF_BISNESS_PRE,
+     INDCIF_BISNESS_ESTAB1,
+     INDCIF_BISNESS_ESTAB2,
+     INDCIF_OCCUP_NATURE,
+     INDCIF_OCCUP_EFFDATE,
+     INDCIF_BLOOD_GRP,
+     INDCIF_IT_STATUS,
+     INDCIF_YEARLY_INCOME,
+     INDCIF_CUST_RISK,
+     INDCIF_CANVASED_EMP,
+     INDCIF_CANVASED_CUST,
+     INDCIF_OTP_GEN,
+     INDCIF_OTP_SOURCE,
+     INDCIF_ADMINOTP_REASON,
+     INDCIF_ADMIN_REMARKS,
+     INDCIF_PLANDLINE,
+     INDCIF_DEPOSITORY,
+     INDCIF_DEMAT_ACCNO,
+     INDCIF_MNTHLY_INCOME,
+     INDCIF_BUSS_ADDR_REQ,
+     INDCIF_UCID_NO)
+  VALUES
+    (1, --indcif_entity_num
+     W_CUST_NUM, --indcif_cust_id
+     W_PREFIX, --indcif_prefix_code
+     SUBSTR(P_CUST_NAME, 1, 50), --indcif_first_name
+     '', --indcif_midle_name
+     SUBSTR(P_CUST_NAME, 51, 100), --indcif_last_name
+     P_FATHER_NAME, --indcif_father_name
+     P_MOTHER_NAME, --indcif_mother_name
+     TO_DATE(P_DOB, 'DD-MM-YYYY'), --indcif_dob
+     0, --AGE
+     P_GENDER, --indcif_gender
+     '', --indcif_marital_status
+     '', --indcif_resident_status
+     '', --indcif_occup_type
+     '', --indcif_occup_service
+     '', --indcif_occup_others
+     '0', --indcif_permanent_addr_same
+     P_CHOUSE_NAME, --indcif_phouse_name
+     P_CSTREET_NAME, --indcif_pstreet_name
+     P_CLANDMARK, --indcif_plandmark
+     '', --indcif_pplace_name
+     '', ---indcif_pcity
+     W_STATE_CODE, --indcif_pstate
+     W_DISTRICT, --indcif_pdistrict
+     P_CPINCODE, --indcif_ppincode
+     '', --indcif_business_name
+     '', --indcif_buliding_name
+     '', --indcif_bstreet_name
+     '', --indcif_blandmark
+     '', --indcif_bplace_name
+     '', --indcif_bcity
+     '', --indcif_bstate
+     '', --indcif_bdistrict
+     0, --indcif_bpincode
+     0, --indcif_blandline
+     '', --indcif_bisness_pre
+     '', --indcif_bisness_estab1
+     '', --indcif_bisness_estab2
+     '', --indcif_occup_nature
+     '', --indcif_occup_effdate
+     '', --indcif_blood_grp
+     '1', --indcif_it_status
+     0, --indcif_yearly_income
+     '', --indcif_cust_risk
+     '', --indcif_canvased_emp
+     '', --indcif_canvased_cust
+     0, --indcif_otp_gen
+     '', --indcif_otp_source
+     '', --indcif_adminotp_reason
+     '', --indcif_admin_remarks
+     0, --indcif_plandline
+     '', --indcif_depository
+     '', --indcif_demat_accno
+     0, --indcif_mnthly_income
+     '', --indcif_buss_addr_req
+     P_UCID_NO); --indcif_ucid_no
+
+  --LEAD MAIN UPDATE CI=USTOMER ID AND UCID NO
+
+  FOR ID1 IN (SELECT *
+                FROM CUST_INTF_PID_DTLS S
+               WHERE S.CIPD_TYPE = 'T'
+                 AND S.CIPD_NUMBER = P_MOBILE_NO) LOOP
+
+    IF ID1.CIPD_PID_TYPE = 'PGP' THEN
+      W_DOCSL := '0';
+      BEGIN
+        SELECT NVL(MAX(PIDDOCS_DOC_SL), 0) + 1
+          INTO W_DOCSL
+          FROM PIDDOCS
+         WHERE PIDDOCS_INV_NUM = W_INV_NUM;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          W_DOCSL := '0';
+      END;
+      W_SQL := 'INSERT INTO PIDDOCS (PIDDOCS_INV_NUM,PIDDOCS_DOC_SL,PIDDOCS_PID_TYPE,
+                PIDDOCS_DOCID_NUM,PIDDOCS_SOURCE_TABLE,PIDDOCS_SOURCE_KEY)
+                VALUES
+                (:1,:2,''PGP'',:3,''CIFDATA'',:4)';
+      EXECUTE IMMEDIATE W_SQL
+        USING W_INV_NUM, W_DOCSL, 1, W_CUST_NUM;
+    END IF;
+    IF ID1.CIPD_PID_TYPE = 'PAN' AND ID1.CIPD_DTLS = 'O' THEN
+
+      BEGIN
+        SELECT 1
+          INTO W_FOUND
+          FROM PIDDOCS
+         WHERE PIDDOCS_PID_TYPE = 'PAN'
+           AND PIDDOCS_DOCID_NUM = ID1.CIPD_DOC_NUM
+           AND ROWNUM = 1;
+
+        W_ERR_MSG := 'PAN Already Exists';
+        RAISE W_USR_EXCEPTION;
+
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+
+      W_DOCSL := '0';
+      BEGIN
+        SELECT NVL(MAX(PIDDOCS_DOC_SL), 0) + 1
+          INTO W_DOCSL
+          FROM PIDDOCS
+         WHERE PIDDOCS_INV_NUM = W_INV_NUM;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          W_DOCSL := '0';
+      END;
+      W_SQL := 'INSERT INTO PIDDOCS (PIDDOCS_INV_NUM,PIDDOCS_DOC_SL,PIDDOCS_PID_TYPE,
+                PIDDOCS_DOCID_NUM,PIDDOCS_SOURCE_TABLE,PIDDOCS_SOURCE_KEY)
+                VALUES
+                (:1,:2,''PAN'',:3,''CIFDATA'',:4)';
+      EXECUTE IMMEDIATE W_SQL
+        USING W_INV_NUM, W_DOCSL, ID1.CIPD_DOC_NUM, W_CUST_NUM;
+    END IF;
+    IF ID1.CIPD_PID_TYPE = 'ADH' THEN
+
+      BEGIN
+        SELECT 1
+          INTO W_FOUND
+          FROM PIDDOCS
+         WHERE PIDDOCS_PID_TYPE = 'ADH'
+           AND PIDDOCS_CARD_NUM = ID1.CIPD_CARD_NUM
+           AND ROWNUM = 1;
+
+        W_ERR_MSG := 'Aadhar Already Exists';
+        RAISE W_USR_EXCEPTION;
+
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+
+      W_DOCSL := '0';
+      BEGIN
+        SELECT NVL(MAX(PIDDOCS_DOC_SL), 0) + 1
+          INTO W_DOCSL
+          FROM PIDDOCS
+         WHERE PIDDOCS_INV_NUM = W_INV_NUM;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          W_DOCSL := '0';
+      END;
+      W_SQL := 'INSERT INTO PIDDOCS (PIDDOCS_INV_NUM,PIDDOCS_DOC_SL,PIDDOCS_PID_TYPE,
+                PIDDOCS_DOCID_NUM,PIDDOCS_CARD_NUM,PIDDOCS_SOURCE_TABLE,PIDDOCS_SOURCE_KEY)
+                VALUES
+                (:1,:2,''ADH'',:3,''CIFDATA'',:4, :5)';
+      EXECUTE IMMEDIATE W_SQL
+        USING W_INV_NUM, W_DOCSL, '********' || SUBSTR(ID1.CIPD_DOC_NUM, 9, 12), ID1.CIPD_CARD_NUM, W_CUST_NUM;
+    END IF;
+    IF ID1.CIPD_PID_TYPE = 'DLC' THEN
+
+      BEGIN
+        SELECT 1
+          INTO W_FOUND
+          FROM PIDDOCS
+         WHERE PIDDOCS_PID_TYPE = 'DLC'
+           AND PIDDOCS_DOCID_NUM = ID1.CIPD_DOC_NUM
+           AND ROWNUM = 1;
+
+        W_ERR_MSG := 'Driving Licence Already Exists';
+        RAISE W_USR_EXCEPTION;
+
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+
+      W_DOCSL := '0';
+      BEGIN
+        SELECT NVL(MAX(PIDDOCS_DOC_SL), 0) + 1
+          INTO W_DOCSL
+          FROM PIDDOCS
+         WHERE PIDDOCS_INV_NUM = W_INV_NUM;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          W_DOCSL := '0';
+      END;
+      W_SQL := 'INSERT INTO PIDDOCS (PIDDOCS_INV_NUM,PIDDOCS_DOC_SL,PIDDOCS_PID_TYPE,
+                PIDDOCS_DOCID_NUM,PIDDOCS_SOURCE_TABLE,PIDDOCS_SOURCE_KEY)
+                VALUES
+                (:1,:2,''DLC'',:3,''CIFDATA'',:4)';
+      EXECUTE IMMEDIATE W_SQL
+        USING W_INV_NUM, W_DOCSL, ID1.CIPD_DOC_NUM, W_CUST_NUM;
+    END IF;
+    IF ID1.CIPD_PID_TYPE = 'EID' AND ID1.CIPD_DTLS = 'O' THEN
+      BEGIN
+        SELECT 1
+          INTO W_FOUND
+          FROM PIDDOCS
+         WHERE PIDDOCS_PID_TYPE = 'EID'
+           AND PIDDOCS_DOCID_NUM = ID1.CIPD_DOC_NUM
+           AND ROWNUM = 1;
+
+        W_ERR_MSG := 'Election ID Already Exists';
+        RAISE W_USR_EXCEPTION;
+
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+
+      W_DOCSL := '0';
+      BEGIN
+        SELECT NVL(MAX(PIDDOCS_DOC_SL), 0) + 1
+          INTO W_DOCSL
+          FROM PIDDOCS
+         WHERE PIDDOCS_INV_NUM = W_INV_NUM;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          W_DOCSL := '0';
+      END;
+      W_SQL := 'INSERT INTO PIDDOCS (PIDDOCS_INV_NUM,PIDDOCS_DOC_SL,PIDDOCS_PID_TYPE,
+                PIDDOCS_DOCID_NUM,PIDDOCS_SOURCE_TABLE,PIDDOCS_SOURCE_KEY)
+                VALUES
+                (:1,:2,''EID'',:3,''CIFDATA'',:4)';
+      EXECUTE IMMEDIATE W_SQL
+        USING W_INV_NUM, W_DOCSL, ID1.CIPD_DOC_NUM, W_CUST_NUM;
+    END IF;
+
+  END LOOP;
+  W_DOCSL := W_DOCSL + 1;
+  W_SQL   := 'INSERT INTO PIDDOCS (PIDDOCS_INV_NUM,PIDDOCS_DOC_SL,PIDDOCS_PID_TYPE,
+                PIDDOCS_DOCID_NUM,PIDDOCS_SOURCE_TABLE,PIDDOCS_SOURCE_KEY)
+                VALUES
+                (:1,:2,''OGL'',:3,''CIFDATA'',:4)';
+  EXECUTE IMMEDIATE W_SQL
+    USING W_INV_NUM, W_DOCSL, '', W_CUST_NUM;
+
+  W_DOCSL := W_DOCSL + 1;
+  W_SQL   := 'INSERT INTO PIDDOCS (PIDDOCS_INV_NUM,PIDDOCS_DOC_SL,PIDDOCS_PID_TYPE,
+                PIDDOCS_DOCID_NUM,PIDDOCS_SOURCE_TABLE,PIDDOCS_SOURCE_KEY)
+                VALUES
+                (:1,:2,''MOB'',:3,''CIFDATA'',:4)';
+  EXECUTE IMMEDIATE W_SQL
+    USING W_INV_NUM, W_DOCSL, '', W_CUST_NUM;
+
+
+  UPDATE CUST_INTF_PID_DTLS S
+     SET S.CIPD_TYPE = 'C'
+   WHERE S.CIPD_TYPE = 'T'
+     AND S.CIPD_NUMBER = P_MOBILE_NO;
+
+  SP_EINDIVCIF_UPD(1, W_CUST_NUM, W_ERR_MSG);
+
+  --  UPDATE KARZA STATUS
+  UPDATE CUST_INTF_PID_DTLS S
+     SET S.CIPD_NUMBER = W_CUST_NUM, S.CIPD_TYPE = 'C'
+   WHERE  S.CIPD_NUMBER = P_MOBILE_NO;
+
+  UPDATE CUST_INTF_PID_DTLS_RESP S
+     SET S.CIPD_NUMBER = W_CUST_NUM, S.CIPD_TYPE = 'C'
+   WHERE S.CIPD_NUMBER = P_MOBILE_NO;
+
+  UPDATE KARZA_REQ_RESP_LOGS S
+     SET S.KRRL_NUMBER = W_CUST_NUM, S.KRRL_TYPE = 'C'
+   WHERE S.KRRL_NUMBER = P_MOBILE_NO;
+
+  UPDATE CUST_KARZA_ADH_XML_DTLS
+     SET CIPD_NUMBER = W_CUST_NUM, cipd_type = 'C'
+   WHERE CIPD_NUMBER = P_MOBILE_NO;
+
+  UPDATE DOORSTEP_LEAD_MAIN S
+     SET S.DS_CUST_NUM = W_CUST_NUM, S.DS_UCICID = P_UCID_NO
+   WHERE S.DS_LEAD_NUM = P_LEAD_NO;
+
+  P_CUST_ID := W_CUST_NUM;
+  P_STATUS  := 'S';
+
+EXCEPTION
+  WHEN W_USR_EXCEPTION THEN
+    P_ERR_MSG := W_ERR_MSG;
+  WHEN OTHERS THEN
+    P_ERR_MSG := SUBSTR(SQLERRM, 1, 500);
+END SP_CREATE_DOORSTEP_CUST;
+/
